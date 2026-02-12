@@ -10,7 +10,6 @@ import sys
 from threading import Thread
 
 from config import get_config
-from detection.yolo_model import WasteDetector
 from detection.tflite_model import TFLiteWasteClassifier
 from detection.inference import InferencePipeline
 from detection.preprocessing import preprocess_for_inference
@@ -44,10 +43,14 @@ class SmartBinSystem:
         
         # Initialize detector (YOLO or TFLite)
         if getattr(config, "DETECTOR_TYPE", "tflite") == "yolo":
+            # Lazy import so Raspberry Pi can run TFLite
+            # without requiring ultralytics to be installed
+            from detection.yolo_model import WasteDetector
+
             logger.info("Detector: YOLO")
             self.detector = WasteDetector(
                 model_path=config.MODEL_PATH,
-                conf_threshold=config.CONFIDENCE_THRESHOLD
+                conf_threshold=config.CONFIDENCE_THRESHOLD,
             )
         else:
             logger.info("Detector: TFLite")
@@ -55,7 +58,7 @@ class SmartBinSystem:
                 model_path=config.TFLITE_MODEL_PATH,
                 labels_path=config.TFLITE_LABELS_PATH,
                 input_size=config.TFLITE_INPUT_SIZE,
-                conf_threshold=config.CONFIDENCE_THRESHOLD
+                conf_threshold=config.CONFIDENCE_THRESHOLD,
             )
         
         self.camera = InferencePipeline(
