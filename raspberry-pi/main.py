@@ -10,7 +10,6 @@ import sys
 from threading import Thread
 
 from config import get_config
-from detection.tflite_model import TFLiteWasteClassifier
 from detection.heuristic_model import HeuristicWasteClassifier
 from detection.inference import InferencePipeline
 from detection.preprocessing import preprocess_for_inference
@@ -61,6 +60,10 @@ class SmartBinSystem:
                 conf_threshold=config.CONFIDENCE_THRESHOLD,
             )
         else:
+            # Lazy import so that TFLite dependencies are only required
+            # when DETECTOR_TYPE is actually set to 'tflite'
+            from detection.tflite_model import TFLiteWasteClassifier
+
             logger.info("Detector: TFLite")
             self.detector = TFLiteWasteClassifier(
                 model_path=config.TFLITE_MODEL_PATH,
