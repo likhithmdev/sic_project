@@ -34,19 +34,27 @@ class IRSensor:
         try:
             GPIO.setmode(GPIO.BCM)
             GPIO.setup(self.pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-            
-            if self.callback:
+        except Exception as e:
+            logger.error(f"IR sensor GPIO base setup failed: {e}")
+            raise
+
+        # Try to attach edge detection, but don't crash the whole system
+        # if this fails (e.g. due to noisy hardware or previous listeners).
+        if self.callback:
+            try:
                 GPIO.add_event_detect(
                     self.pin,
                     GPIO.FALLING,
                     callback=self._debounced_callback,
-                    bouncetime=300
+                    bouncetime=300,
                 )
-            
-            logger.info(f"IR sensor initialized on GPIO pin {self.pin}")
-        except Exception as e:
-            logger.error(f"IR sensor GPIO setup failed: {e}")
-            raise
+            except Exception as e:
+                logger.error(
+                    f"IR sensor edge detection setup failed: {e} - "
+                    f"falling back to polling only."
+                )
+
+        logger.info(f"IR sensor initialized on GPIO pin {self.pin}")
     
     def _debounced_callback(self, channel):
         """Debounced callback wrapper"""
