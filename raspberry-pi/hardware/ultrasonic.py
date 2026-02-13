@@ -54,42 +54,50 @@ class UltrasonicSensor:
             Distance in centimeters
         """
         distances = []
-        
+        last_pulse_duration = 0.0
+        last_distance = 0.0
+
         for _ in range(samples):
             # Send trigger pulse
             GPIO.output(self.trigger_pin, True)
             time.sleep(0.00001)
             GPIO.output(self.trigger_pin, False)
-            
+
             # Wait for echo
             pulse_start = time.time()
             timeout_start = pulse_start
-            
+
             while GPIO.input(self.echo_pin) == 0:
                 pulse_start = time.time()
                 if pulse_start - timeout_start > 0.1:
                     break
-            
+
             pulse_end = time.time()
             timeout_end = pulse_end
-            
+
             while GPIO.input(self.echo_pin) == 1:
                 pulse_end = time.time()
                 if pulse_end - timeout_end > 0.1:
                     break
-            
+
             # Calculate distance
             pulse_duration = pulse_end - pulse_start
+            last_pulse_duration = pulse_duration
             distance = pulse_duration * 17150  # Speed of sound / 2
             distance = round(distance, 2)
-            
+            last_distance = distance
+
             if 2 < distance < 400:  # Valid range for HC-SR04
                 distances.append(distance)
-            
+
             time.sleep(0.05)
-        
+
         if not distances:
-            logger.warning("No valid distance measurements")
+            logger.warning(
+                "No valid distance (Trig=%s Echo=%s). Last: pulse=%.4fs dist=%.1fcm. "
+                "Check wiring, Echo 5V->3.3V divider, and pins in gpio_setup.py",
+                self.trigger_pin, self.echo_pin, last_pulse_duration, last_distance,
+            )
             return -1
         
         avg_distance = sum(distances) / len(distances)
@@ -114,7 +122,7 @@ class UltrasonicSensor:
         
         fill_percentage = max(0, min(100, fill_percentage))
         
-        logger.info(f"Bin fill level: {fill_percentage:.1f}%")
+        logger.debug(f"Bin fill level: {fill_percentage:.1f}%")
         return fill_percentage
     
     def is_full(self, threshold: float = 80.0) -> bool:
